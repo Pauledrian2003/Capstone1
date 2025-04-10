@@ -1,0 +1,37 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Rules for properties collection
+    match /properties/{propertyId} {
+      // Allow anyone to read properties
+      allow read: if true;
+      
+      // Allow create if user is authenticated
+      allow create: if request.auth != null &&
+                    request.resource.data.userId == request.auth.uid;
+      
+      // Allow update and delete for property owner
+      allow update, delete: if request.auth != null &&
+                            resource.data.userId == request.auth.uid;
+    }
+
+    // Rules for users collection
+    match /users/{userId} {
+      // Allow read and write access only if user is authenticated and accessing their own document
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+      
+      // Validate data structure when creating a new user document
+      allow create: if request.auth != null && 
+                    request.auth.uid == userId &&
+                    request.resource.data.keys().hasAll(['phone', 'email', 'name', 'address']) &&
+                    request.resource.data.phone is string &&
+                    request.resource.data.phone.matches('^[0-9]{4}-[0-9]{4}-[0-9]{3}$');
+    }
+
+    // Rules for favorites collection - simplified for testing
+    match /favorites/{document} {
+      allow read, write: if request.auth != null;
+    }
+  }
+} 
